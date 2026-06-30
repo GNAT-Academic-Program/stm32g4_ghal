@@ -39,81 +39,71 @@ package body STM32G431_SPI is
       raise Spi_Types.SPI_Unsupported;
    end To_BR;
 
-   function Is_Enabled (Dev : Device) return Boolean is
+   function Is_Enabled return Boolean is
    begin
-      return Dev.Periph.CR1.SPE = 1;
+      return Periph.CR1.SPE = 1;
    end Is_Enabled;
 
-   function Make_Device return Device is
-   begin
-      return (Periph => STM32G431_SPI.Periph);
-   end Make_Device;
-
-   procedure Init
-     (Dev : in out Device;
-      Cfg : Spi_Types.Spi_Config)
-   is
+   procedure Init (Cfg : Spi_Types.Spi_Config) is
       Pclk : constant Natural := Get_Clock;
    begin
       RCC_Enable;
 
-      Dev.Periph.CR1.SPE := 0;
+      Periph.CR1.SPE := 0;
 
-      Dev.Periph.CR1.CPOL :=
+      Periph.CR1.CPOL :=
         (if Cfg.Mode.Polarity = Spi_Types.High then 1 else 0);
-      Dev.Periph.CR1.CPHA :=
+      Periph.CR1.CPHA :=
         (if Cfg.Mode.Phase = Spi_Types.Edge_2 then 1 else 0);
 
-      Dev.Periph.CR1.BR := To_BR (Pclk, Cfg.Frequency);
+      Periph.CR1.BR := To_BR (Pclk, Cfg.Frequency);
 
-      Dev.Periph.CR1.LSBFIRST :=
+      Periph.CR1.LSBFIRST :=
         (if Cfg.Bit_Order = Spi_Types.LSB_First then 1 else 0);
 
-      Dev.Periph.CR2.DS :=
+      Periph.CR2.DS :=
         (case Cfg.Data_Size is
             when Spi_Types.Data_8  => STM32G431xx.UInt4 (7),
             when Spi_Types.Data_16 => STM32G431xx.UInt4 (15));
 
-      Dev.Periph.CR2.FRXTH :=
+      Periph.CR2.FRXTH :=
         (if Cfg.Data_Size = Spi_Types.Data_8 then 1 else 0);
 
-      Dev.Periph.CR1.MSTR := 1;
-      Dev.Periph.CR1.SSM  := 1;
-      Dev.Periph.CR1.SSI  := 1;
+      Periph.CR1.MSTR := 1;
+      Periph.CR1.SSM  := 1;
+      Periph.CR1.SSI  := 1;
    end Init;
 
-   procedure Enable (Dev : in out Device) is
+   procedure Enable is
    begin
-      Dev.Periph.CR1.SPE := 1;
+      Periph.CR1.SPE := 1;
    end Enable;
 
-   procedure Disable (Dev : in out Device) is
+   procedure Disable is
    begin
-      while Dev.Periph.SR.BSY = 1 loop
+      while Periph.SR.BSY = 1 loop
          null;
       end loop;
-      Dev.Periph.CR1.SPE := 0;
+      Periph.CR1.SPE := 0;
    end Disable;
 
-   procedure Reset (Dev : in out Device) is
-      pragma Unreferenced (Dev);
+   procedure Reset is
    begin
       RCC_Reset;
    end Reset;
 
    procedure Tx_Push
-     (Dev      : in out Device;
-      B        : Storage_Element;
+     (B        : Storage_Element;
       Accepted : out Boolean)
    is
       Wait_Count : Natural := 0;
    begin
-      if not Is_Enabled (Dev) then
+      if not Is_Enabled then
          Accepted := False;
          return;
       end if;
 
-      while Dev.Periph.SR.TXE = 0 loop
+      while Periph.SR.TXE = 0 loop
          Wait_Count := Wait_Count + 1;
          if Wait_Count >= DR_Wait_Timeout then
             Accepted := False;
@@ -123,7 +113,7 @@ package body STM32G431_SPI is
 
       declare
          DR8 : MT.UInt8
-           with Address => Dev.Periph.DR'Address, Volatile, Import;
+           with Address => Periph.DR'Address, Volatile, Import;
       begin
          DR8 := MT.UInt8 (B);
       end;
@@ -131,22 +121,21 @@ package body STM32G431_SPI is
    end Tx_Push;
 
    procedure Rx_Pop
-     (Dev       : in out Device;
-      B         : out Storage_Element;
+     (B         : out Storage_Element;
       Available : out Boolean)
    is
    begin
       B := 0;
 
-      if not Is_Enabled (Dev) then
+      if not Is_Enabled then
          Available := False;
          return;
       end if;
 
-      if Dev.Periph.SR.RXNE = 1 then
+      if Periph.SR.RXNE = 1 then
          declare
             DR8 : MT.UInt8
-              with Address => Dev.Periph.DR'Address, Volatile, Import;
+              with Address => Periph.DR'Address, Volatile, Import;
          begin
             B := Storage_Element (DR8);
          end;
@@ -157,19 +146,18 @@ package body STM32G431_SPI is
    end Rx_Pop;
 
    procedure Transfer
-     (Dev : in out Device;
-      TX  : Storage_Element;
-      RX  : out Storage_Element)
+     (TX : Storage_Element;
+      RX : out Storage_Element)
    is
       Wait_Count : Natural := 0;
    begin
       RX := 0;
 
-      if not Is_Enabled (Dev) then
-         raise Spi_Types.SPI_Error with "Transfer: device not enabled";
+      if not Is_Enabled then
+         raise Spi_Types.SPI_Error with "Transfer: peripheral not enabled";
       end if;
 
-      while Dev.Periph.SR.TXE = 0 loop
+      while Periph.SR.TXE = 0 loop
          Wait_Count := Wait_Count + 1;
          if Wait_Count >= DR_Wait_Timeout then
             raise Spi_Types.SPI_Error with "Transfer: TXE timeout";
@@ -178,13 +166,13 @@ package body STM32G431_SPI is
 
       declare
          DR8 : MT.UInt8
-           with Address => Dev.Periph.DR'Address, Volatile, Import;
+           with Address => Periph.DR'Address, Volatile, Import;
       begin
          DR8 := MT.UInt8 (TX);
       end;
 
       Wait_Count := 0;
-      while Dev.Periph.SR.RXNE = 0 loop
+      while Periph.SR.RXNE = 0 loop
          Wait_Count := Wait_Count + 1;
          if Wait_Count >= DR_Wait_Timeout then
             raise Spi_Types.SPI_Error with "Transfer: RXNE timeout";
@@ -193,7 +181,7 @@ package body STM32G431_SPI is
 
       declare
          DR8 : MT.UInt8
-           with Address => Dev.Periph.DR'Address, Volatile, Import;
+           with Address => Periph.DR'Address, Volatile, Import;
       begin
          RX := Storage_Element (DR8);
       end;

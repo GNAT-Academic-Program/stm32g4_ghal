@@ -3,6 +3,11 @@ with STM32G431xx;
 with STM32G431xx.SPI;
 with System.Storage_Elements; use System.Storage_Elements;
 
+--  STM32G431_SPI models a physical SPI peripheral (SPI1, SPI2, etc.).
+--  The instantiation IS the bus. There is no Device type.
+--
+--  SPI is a one-level abstraction: bus = device.
+
 generic
    Periph         : not null access STM32G431xx.SPI.SPI_Peripheral;
    with function  Get_Clock   return Natural;
@@ -10,35 +15,20 @@ generic
    with procedure RCC_Reset;
 package STM32G431_SPI is
 
-   type Device is limited private;
-
-   function Make_Device return Device;
-
    --  Control-plane hooks
 
-   procedure Init     (Dev : in out Device;
-                       Cfg : Spi_Types.Spi_Config);
-   procedure Enable   (Dev : in out Device);
-   procedure Disable  (Dev : in out Device);
-   procedure Reset    (Dev : in out Device);
+   procedure Init     (Cfg : Spi_Types.Spi_Config);
+   procedure Enable;
+   procedure Disable;
+   procedure Reset;
 
    --  Data-plane hooks
 
-   procedure Tx_Push  (Dev      : in out Device;
-                       B        : Storage_Element;
+   procedure Tx_Push  (B        : Storage_Element;
                        Accepted : out Boolean);
-   procedure Rx_Pop   (Dev       : in out Device;
-                       B         : out Storage_Element;
+   procedure Rx_Pop   (B         : out Storage_Element;
                        Available : out Boolean);
-   procedure Transfer (Dev : in out Device;
-                       TX  : Storage_Element;
-                       RX  : out Storage_Element);
-
-private
-
-   type Device is record
-      Periph : access STM32G431xx.SPI.SPI_Peripheral
-                 := STM32G431_SPI.Periph;
-   end record;
+   procedure Transfer (TX : Storage_Element;
+                       RX : out Storage_Element);
 
 end STM32G431_SPI;

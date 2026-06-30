@@ -21,9 +21,6 @@ debug_generic           = "*"
 
 [[pins]]
 gpio_generic  = { url = "https://github.com/GNAT-Academic-Program/gpio_generic.git", branch = "main" }
-i2c_generic   = { url = "https://github.com/GNAT-Academic-Program/i2c_generic.git", branch = "main" }
-usart_generic = { url = "https://github.com/GNAT-Academic-Program/usart_generic.git", branch = "main" }
-spi_generic   = { url = "https://github.com/GNAT-Academic-Program/spi_generic.git", branch = "main" }
 machine_types = { url = "https://github.com/GNAT-Academic-Program/machine_types.git", branch = "main" }
 debug_generic = { url = "https://github.com/GNAT-Academic-Program/debug_generic.git", branch = "main" }
 
@@ -49,3 +46,12 @@ AHB_Pre    = { type = "Enum",    values = ["DIV1", "DIV2", "DIV4", "DIV8", "DIV1
                                            "DIV64", "DIV128", "DIV256", "DIV512"],          default = "DIV1"  }
 APB1_Pre   = { type = "Enum",    values = ["DIV1", "DIV2", "DIV4", "DIV8", "DIV16"],        default = "DIV1"  }
 APB2_Pre   = { type = "Enum",    values = ["DIV1", "DIV2", "DIV4", "DIV8", "DIV16"],        default = "DIV1"  }
+
+[[pins]]
+i2c_generic = { path='../i2c_generic' }
+
+[[pins]]
+usart_generic = { path='../usart_generic' }
+
+[[pins]]
+spi_generic = { path='../spi_generic' }

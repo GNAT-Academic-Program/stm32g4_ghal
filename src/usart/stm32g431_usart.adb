@@ -13,11 +13,6 @@ package body STM32G431_USART is
    TXE_Wait_Timeout      : constant Natural := 1_000_000;
    Clock_Startup_Timeout : constant Natural := 1_000_000;
 
-   function Make_Device return Device is
-   begin
-      return (Periph => STM32G431_USART.Periph);
-   end Make_Device;
-
    procedure Compute_BRR
      (Pclk     : Natural;
       Baud     : Natural;
@@ -66,20 +61,18 @@ package body STM32G431_USART is
       end case;
    end Baud_To_Int;
 
-   function Is_Enabled (Dev : Device) return Boolean is
+   function Is_Enabled return Boolean is
    begin
-      return Dev.Periph.CR1.UE = 1;
+      return Periph.CR1.UE = 1;
    end Is_Enabled;
 
-   function Is_Initialized (Dev : Device) return Boolean is
+   function Is_Initialized return Boolean is
       use type STM32G431xx.UInt12;
    begin
-      return Dev.Periph.BRR.DIV_Mantissa /= 0;
+      return Periph.BRR.DIV_Mantissa /= 0;
    end Is_Initialized;
 
-   procedure Init
-     (Dev : in out Device;
-      Cfg : Usart_Types.Usart_Config)
+   procedure Init (Cfg : Usart_Types.Usart_Config)
    is
       Pclk  : Natural;
       Baud  : constant Natural := Baud_To_Int (Cfg.Baud);
@@ -105,75 +98,74 @@ package body STM32G431_USART is
 
       Pclk := Get_Clock;
 
-      Dev.Periph.CR1.UE    := 0;
-      Dev.Periph.CR1.OVER8 := 0;
+      Periph.CR1.UE    := 0;
+      Periph.CR1.OVER8 := 0;
 
       Compute_BRR (Pclk, Baud, Mant, Frac);
-      Dev.Periph.BRR.DIV_Mantissa := Mant;
-      Dev.Periph.BRR.DIV_Fraction := Frac;
+      Periph.BRR.DIV_Mantissa := Mant;
+      Periph.BRR.DIV_Fraction := Frac;
 
-      Dev.Periph.CR1.PCE :=
+      Periph.CR1.PCE :=
         (if Cfg.Parity = Usart_Types.None then 0 else 1);
-      Dev.Periph.CR1.PS :=
+      Periph.CR1.PS :=
         (if Cfg.Parity = Usart_Types.Odd  then 1 else 0);
 
       case Cfg.Data_Bits is
          when Usart_Types.Data_7 =>
-            Dev.Periph.CR1.M0 := 0;
-            Dev.Periph.CR1.M1 := 1;
+            Periph.CR1.M0 := 0;
+            Periph.CR1.M1 := 1;
          when Usart_Types.Data_8 =>
-            Dev.Periph.CR1.M0 := 0;
-            Dev.Periph.CR1.M1 := 0;
+            Periph.CR1.M0 := 0;
+            Periph.CR1.M1 := 0;
          when Usart_Types.Data_9 =>
-            Dev.Periph.CR1.M0 := 1;
-            Dev.Periph.CR1.M1 := 0;
+            Periph.CR1.M0 := 1;
+            Periph.CR1.M1 := 0;
       end case;
 
-      Dev.Periph.CR2.STOP :=
+      Periph.CR2.STOP :=
         (if Cfg.Stop_Bits = Usart_Types.Stop_2
          then STM32G431xx.UInt2 (2)
          else STM32G431xx.UInt2 (0));
 
-      Dev.Periph.CR3.RTSE :=
+      Periph.CR3.RTSE :=
         (if Cfg.Flow = Usart_Types.RTS_CTS then 1 else 0);
-      Dev.Periph.CR3.CTSE :=
+      Periph.CR3.CTSE :=
         (if Cfg.Flow = Usart_Types.RTS_CTS then 1 else 0);
    end Init;
 
-   procedure Enable (Dev : in out Device) is
+   procedure Enable is
    begin
-      if not Is_Initialized (Dev) then
+      if not Is_Initialized then
          raise Usart_Types.USART_Error with "Enable: peripheral not initialized";
       end if;
 
-      Dev.Periph.CR1.TE := 1;
-      Dev.Periph.CR1.RE := 1;
-      Dev.Periph.CR1.UE := 1;
+      Periph.CR1.TE := 1;
+      Periph.CR1.RE := 1;
+      Periph.CR1.UE := 1;
    end Enable;
 
-   procedure Disable (Dev : in out Device) is
+   procedure Disable is
    begin
-      Dev.Periph.CR1.UE := 0;
+      Periph.CR1.UE := 0;
    end Disable;
 
-   procedure Reset (Dev : in out Device) is
+   procedure Reset is
    begin
       RCC_Reset;
    end Reset;
 
    procedure Tx_Push
-     (Dev      : in out Device;
-      B        : Storage_Element;
+     (B        : Storage_Element;
       Accepted : out Boolean)
    is
       Wait_Count : Natural := 0;
    begin
-      if not Is_Enabled (Dev) then
+      if not Is_Enabled then
          Accepted := False;
          return;
       end if;
 
-      while Dev.Periph.ISR.TXE = 0 loop
+      while Periph.ISR.TXE = 0 loop
          Wait_Count := Wait_Count + 1;
          if Wait_Count >= TXE_Wait_Timeout then
             Accepted := False;
@@ -181,23 +173,22 @@ package body STM32G431_USART is
          end if;
       end loop;
 
-      Dev.Periph.TDR.TDR := STM32G431xx.UInt9 (B);
+      Periph.TDR.TDR := STM32G431xx.UInt9 (B);
       Accepted := True;
    end Tx_Push;
 
    procedure Rx_Pop
-     (Dev       : in out Device;
-      B         : out Storage_Element;
+     (B         : out Storage_Element;
       Available : out Boolean)
    is
    begin
-      if not Is_Enabled (Dev) then
+      if not Is_Enabled then
          Available := False;
          return;
       end if;
 
-      if Dev.Periph.ISR.RXNE = 1 then
-         B         := Storage_Element (Dev.Periph.RDR.RDR);
+      if Periph.ISR.RXNE = 1 then
+         B         := Storage_Element (Periph.RDR.RDR);
          Available := True;
       else
          Available := False;

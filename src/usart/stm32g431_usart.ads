@@ -3,6 +3,11 @@ with STM32G431xx;
 with STM32G431xx.USART;
 with System.Storage_Elements; use System.Storage_Elements;
 
+--  STM32G431_USART models a physical USART peripheral (USART1, USART2, etc.).
+--  The instantiation IS the bus. There is no Device type.
+--
+--  USART is a one-level abstraction: bus = device.
+
 generic
    Periph         : not null access STM32G431xx.USART.USART_Peripheral;
    with function  Get_Clock   return Natural;
@@ -10,33 +15,19 @@ generic
    with procedure RCC_Reset;
 package STM32G431_USART is
 
-   type Device is private;
-
-   function Make_Device return Device;
-
    --  Control-plane hooks
 
-   procedure Init       (Dev : in out Device;
-                         Cfg : Usart_Types.Usart_Config);
-   procedure Enable     (Dev : in out Device);
-   function  Is_Enabled (Dev : Device) return Boolean;
-   procedure Disable    (Dev : in out Device);
-   procedure Reset      (Dev : in out Device);
+   procedure Init       (Cfg : Usart_Types.Usart_Config);
+   procedure Enable;
+   function  Is_Enabled return Boolean;
+   procedure Disable;
+   procedure Reset;
 
    --  Data-plane hooks
 
-   procedure Tx_Push (Dev      : in out Device;
-                      B        : Storage_Element;
+   procedure Tx_Push (B        : Storage_Element;
                       Accepted : out Boolean);
-   procedure Rx_Pop  (Dev       : in out Device;
-                      B         : out Storage_Element;
+   procedure Rx_Pop  (B         : out Storage_Element;
                       Available : out Boolean);
-
-private
-
-   type Device is record
-      Periph : access STM32G431xx.USART.USART_Peripheral
-                 := STM32G431_USART.Periph;
-   end record;
 
 end STM32G431_USART;
